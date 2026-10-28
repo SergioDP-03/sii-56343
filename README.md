@@ -17,7 +17,14 @@ Este repositorio contiene el material utilizado en las prácticas de la asignatu
 El objetivo de la asignatura es introducir en el desarrollo de aplicaciones para sistemas informáticos industriales, haciendo especial énfasis en el uso del lenguaje C y del sistema operativo Linux.
 
 ---
-
+##Funcionalidades implementadas
+-Practica1: movimiento de la esfera y de las raquetas
+-Practica2: +Nuevo programa logger, crea tuberia con nombre '/tmp/loggerFIFO', la abre en lectura e imprime por pantalla lo que recibe.
++El juego tenis abre la tuberia en escritura y envia un mensaje cada vez que un jugador anota un punto
++Cuando alguno de los 2 jugadores llega a 3 puntos, tenis termina y el logger termina detras
+*El logger siempre debe lanzarse antes del tenis:
+./workspace/build/logger ->Terminal 1
+./workspace/build/tenis ->Terminal 2 
 ## 📚 Wiki
 
 La documentación detallada de cada una de las prácticas se encuentra en la Wiki del repositorio.
