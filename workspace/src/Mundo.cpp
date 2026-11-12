@@ -11,6 +11,7 @@
 #include <math.h>
 #include<fcntl.h>
 #include<unistd.h>
+#include <sys/mman.h>
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -154,7 +155,12 @@ sprintf(cad, "Jugador 1 marca 1 punto, lleva un total de %d puntos.\n",puntos1);
 write(fifo, cad, strlen(cad));
 if(puntos1 >=3) exit(0);
 	}
-
+pdatos->esfera = esfera;
+pdatos->raqueta1=jugador1;
+if (pdatos->accion == 1)
+OnKeyboardDown('w',0,0);
+else if (pdatos->accion==-1)
+OnKeyboardDown('s',0,0);
 }
 
 void CMundo::OnKeyboardDown(unsigned char key, int x, int y)
@@ -207,4 +213,16 @@ if(fifo<0){
 perror("No puede abriste el FIFO");
 exit(1);
 }
+int fd = open(RUTA_MEMORIA, O_RDWR|O_CREAT|O_TRUNC, 0666);
+if (fd<0){
+perror("No puede crearse el fichero de memoria");
+exit(1);
+}
+ftruncate(fd, sizeof(DatosMemCompartida));
+pdatos = (DatosMemCompartida*)mmap(NULL, sizeof(DatosMemCompartida), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+if (pdatos == MAP_FAILED) { 
+perror("Error en la proyeccion mmap");
+exit(1);
+}
+close(fd);
 }
