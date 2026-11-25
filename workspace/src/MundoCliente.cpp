@@ -1,8 +1,8 @@
-// Mundo.cpp: implementation of the CMundo class.
+// MundoCliente.cpp: implementation of the CMundoCliente class.
 //
 //////////////////////////////////////////////////////////////////////
 #include <fstream>
-#include "Mundo.h"
+#include "MundoCliente.h"
 #include "glut.h"
 
 #include <stdlib.h>
@@ -12,21 +12,25 @@
 #include<fcntl.h>
 #include<unistd.h>
 #include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-CMundo::CMundo()
+CMundoCliente::CMundoCliente()
 {
 	Init();
 }
 
-CMundo::~CMundo()
+CMundoCliente::~CMundoCliente()
 {
-close(fifo);
+close(fifo_coord);
+close(fifo_teclas);
+unlink("/tmp/teclasFIFO");
 }
 
-void CMundo::InitGL()
+void CMundoCliente::InitGL()
 {
 	//Habilitamos las luces, la renderizacion y el color de los materiales
 	glEnable(GL_LIGHT0);
@@ -75,7 +79,7 @@ void print(char *mensaje, int x, int y, float r, float g, float b)
 
 	glEnable( GL_DEPTH_TEST );
 }
-void CMundo::OnDraw()
+void CMundoCliente::OnDraw()
 {
 	//Borrado de la pantalla	
    	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -115,46 +119,15 @@ void CMundo::OnDraw()
 	glutSwapBuffers();
 }
 
-void CMundo::OnTimer(int value)
+void CMundoCliente::OnTimer(int value)
 {	
-	jugador1.Mueve(0.025f);
-	jugador2.Mueve(0.025f);
-	esfera.Mueve(0.025f);
-	int i;
-	for(i=0;i<paredes.size();i++)
-	{
-		paredes[i].Rebota(esfera);
-		paredes[i].Rebota(jugador1);
-		paredes[i].Rebota(jugador2);
-	}
-
-	jugador1.Rebota(esfera);
-	jugador2.Rebota(esfera);
-	if(fondo_izq.Rebota(esfera))
-	{
-		esfera.centro.x=0;
-		esfera.centro.y=rand()/(float)RAND_MAX;
-		esfera.velocidad.x=2+2*rand()/(float)RAND_MAX;
-		esfera.velocidad.y=2+2*rand()/(float)RAND_MAX;
-		puntos2++;
+//leo las coordenadas que manda el servidor
 char cad[200];
-sprintf(cad, "Jugador 2 marca 1 punto, lleva un total de %d puntos.\n",puntos2);
-write(fifo, cad, strlen(cad));
-if(puntos2 >=3) exit(0);
-	}
-
-	if(fondo_dcho.Rebota(esfera))
-	{
-		esfera.centro.x=0;
-		esfera.centro.y=rand()/(float)RAND_MAX;
-		esfera.velocidad.x=-2-2*rand()/(float)RAND_MAX;
-		esfera.velocidad.y=-2-2*rand()/(float)RAND_MAX;
-		puntos1++;
-char cad[200];
-sprintf(cad, "Jugador 1 marca 1 punto, lleva un total de %d puntos.\n",puntos1);
-write(fifo, cad, strlen(cad));
-if(puntos1 >=3) exit(0);
-	}
+if(read(fifo_coord, cad, sizeof(cad))<=0){
+printf("El servidor ha terminado\n");
+exit(0);
+}
+sscanf(cad,"%f %f %f %f %f %f %f %f %f %f %d %d", &esfera.centro.x,&esfera.centro.y, &jugador1.x1,&jugador1.y1,&jugador1.x2,&jugador1.y2, &jugador2.x1,&jugador2.y1,&jugador2.x2,&jugador2.y2, &puntos1, &puntos2);
 pdatos->esfera = esfera;
 pdatos->raqueta1=jugador1;
 if (pdatos->accion == 1)
@@ -163,8 +136,11 @@ else if (pdatos->accion==-1)
 OnKeyboardDown('s',0,0);
 }
 
-void CMundo::OnKeyboardDown(unsigned char key, int x, int y)
+void CMundoCliente::OnKeyboardDown(unsigned char key, int x, int y)
 {
+char cad[100];
+sprintf(cad,"%c",key);
+write(fifo_teclas, cad, sizeof(cad));
 	switch(key)
 	{
 //	case 'a':jugador1.velocidad.x=-1;break;
@@ -177,7 +153,7 @@ void CMundo::OnKeyboardDown(unsigned char key, int x, int y)
 	}
 }
 
-void CMundo::Init()
+void CMundoCliente::Init()
 {
 	Plano p;
 //pared inferior
@@ -208,9 +184,20 @@ void CMundo::Init()
 	jugador2.x1=6;jugador2.y1=-1;
 	jugador2.x2=6;jugador2.y2=1;
 
-fifo=open("/tmp/loggerFIFO", O_WRONLY);
-if(fifo<0){
-perror("No puede abriste el FIFO");
+//creo la tuberia de teclas antes de abrir la de coordenadas
+unlink("/tmp/teclasFIFO");
+if (mkfifo("/tmp/teclasFIFO",0600)<0){
+perror("No puede crearse el FIFO de teclas");
+exit(1);
+}
+fifo_coord=open("/tmp/coordenadasFIFO", O_RDONLY);
+if(fifo_coord<0){
+perror("No puede abrirse el FIFO de coordenadas (lanza antes el servidor)");
+exit(1);
+}
+fifo_teclas=open("/tmp/teclasFIFO", O_WRONLY);
+if(fifo_teclas<0){
+perror("No puede abrirse el FIFO de teclas");
 exit(1);
 }
 int fd = open(RUTA_MEMORIA, O_RDWR|O_CREAT|O_TRUNC, 0666);
